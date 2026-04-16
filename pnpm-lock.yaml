@@ -326,7 +326,7 @@ importers:
         version: 1.2.2(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(yaml@2.8.3))(wxt@0.20.22(@types/node@25.6.0)(eslint@10.2.0(jiti@2.6.1))(jiti@2.6.1)(rollup@4.53.2)(yaml@2.8.3))
       autoprefixer:
         specifier: ^10.5.0
-        version: 10.5.0(postcss@8.5.9)
+        version: 10.5.0(postcss@8.5.10)
       eruda:
         specifier: ^3.4.3
         version: 3.4.3
@@ -355,11 +355,11 @@ importers:
         specifier: ^22.6.5
         version: 22.6.5
       postcss:
-        specifier: ^8.5.9
-        version: 8.5.9
+        specifier: ^8.5.10
+        version: 8.5.10
       postcss-rem-to-responsive-pixel:
         specifier: ^7.0.1
-        version: 7.0.1(postcss@8.5.9)
+        version: 7.0.1(postcss@8.5.10)
       postcss-value-parser:
         specifier: ^4.2.0
         version: 4.2.0
@@ -6280,8 +6280,8 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.5.9:
-    resolution: {integrity: sha512-7a70Nsot+EMX9fFU3064K/kdHWZqGVY+BADLyXc8Dfv+mTLLVl6JzJpPaCZ2kQL9gIJvKXSLMHhqdRRjwQeFtw==}
+  postcss@8.5.10:
+    resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   posthog-js@1.369.0:
@@ -9906,7 +9906,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.2.2
       '@tailwindcss/oxide': 4.2.2
-      postcss: 8.5.9
+      postcss: 8.5.10
       tailwindcss: 4.2.2
 
   '@tanstack/devtools-event-client@0.4.3': {}
@@ -10181,8 +10181,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.57.0(typescript@6.0.2)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@6.0.2)
-      '@typescript-eslint/types': 8.58.2
+      '@typescript-eslint/tsconfig-utils': 8.57.0(typescript@6.0.2)
+      '@typescript-eslint/types': 8.57.0
       debug: 4.4.3
       typescript: 6.0.2
     transitivePeerDependencies:
@@ -10444,7 +10444,7 @@ snapshots:
       '@vue/shared': 3.5.24
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.9
+      postcss: 8.5.10
       source-map-js: 1.2.1
 
   '@vue/compiler-ssr@3.5.24':
@@ -10629,13 +10629,13 @@ snapshots:
       stubborn-fs: 2.0.0
       when-exit: 2.1.5
 
-  autoprefixer@10.5.0(postcss@8.5.9):
+  autoprefixer@10.5.0(postcss@8.5.10):
     dependencies:
       browserslist: 4.28.2
       caniuse-lite: 1.0.30001788
       fraction.js: 5.3.4
       picocolors: 1.1.1
-      postcss: 8.5.9
+      postcss: 8.5.10
       postcss-value-parser: 4.2.0
 
   aws4fetch@1.0.20: {}
@@ -13674,15 +13674,15 @@ snapshots:
     dependencies:
       yaml: 2.8.3
 
-  postcss-plugin-shared@1.1.1(postcss@8.5.9):
+  postcss-plugin-shared@1.1.1(postcss@8.5.10):
     dependencies:
       defu: 6.1.4
-      postcss: 8.5.9
+      postcss: 8.5.10
 
-  postcss-rem-to-responsive-pixel@7.0.1(postcss@8.5.9):
+  postcss-rem-to-responsive-pixel@7.0.1(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.9
-      postcss-plugin-shared: 1.1.1(postcss@8.5.9)
+      postcss: 8.5.10
+      postcss-plugin-shared: 1.1.1(postcss@8.5.10)
 
   postcss-selector-parser@7.1.1:
     dependencies:
@@ -13691,7 +13691,7 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.5.9:
+  postcss@8.5.10:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -14243,7 +14243,7 @@ snapshots:
       node-fetch: 3.3.2
       open: 11.0.0
       ora: 8.2.0
-      postcss: 8.5.9
+      postcss: 8.5.10
       postcss-selector-parser: 7.1.1
       prompts: 2.4.2
       recast: 0.23.11
@@ -14836,7 +14836,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.9
+      postcss: 8.5.10
       rolldown: 1.0.0-rc.15
       tinyglobby: 0.2.16
     optionalDependencies:
