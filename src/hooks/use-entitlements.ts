@@ -2,11 +2,14 @@ import type { Entitlements } from "@/types/entitlements"
 import { useQuery } from "@tanstack/react-query"
 import { useSetAtom } from "jotai"
 import { useEffect } from "react"
-import { EntitlementsSchema, FREE_ENTITLEMENTS } from "@/types/entitlements"
+import { EntitlementsSchema, FREE_ENTITLEMENTS, isPro } from "@/types/entitlements"
 import { entitlementsAtom } from "@/utils/atoms/entitlements"
 import { fetchEntitlementsFromBackend } from "@/utils/billing/fetch-entitlements"
 import { readCachedEntitlements, writeCachedEntitlements } from "@/utils/db/dexie/entitlements"
 import { logger } from "@/utils/logger"
+
+/** Reject cache rows older than this to prevent perpetually-stale entitlements. */
+const MAX_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 interface UseEntitlementsResult {
   data: Entitlements
@@ -30,7 +33,12 @@ async function queryEntitlements(userId: string): Promise<EntitlementsQueryResul
     logger.warn("[billing] getEntitlements failed, falling back to cache", error)
     const cached = await readCachedEntitlements(userId)
     if (cached !== null) {
-      return { data: cached.value, isFromCache: true }
+      const ageMs = Date.now() - cached.updatedAt.getTime()
+      const isExpired = ageMs >= MAX_CACHE_AGE_MS
+      const isTierValid = cached.value.tier === "free" || isPro(cached.value)
+      if (!isExpired && isTierValid) {
+        return { data: cached.value, isFromCache: true }
+      }
     }
     return { data: FREE_ENTITLEMENTS, isFromCache: false }
   }
@@ -61,9 +69,10 @@ export function useEntitlements(
     meta: { suppressToast: true },
   })
 
-  // Sync successful fetch result into the global Jotai atom
+  // Sync successful fetch result into the global Jotai atom — only when the
+  // data comes directly from the backend (not a cache fallback).
   useEffect(() => {
-    if (query.data != null) {
+    if (query.data != null && !query.data.isFromCache) {
       setEntitlements(query.data.data)
     }
   }, [query.data, setEntitlements])

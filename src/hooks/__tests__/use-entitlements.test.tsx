@@ -6,6 +6,7 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { createStore, Provider as JotaiProvider } from "jotai"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { FREE_ENTITLEMENTS } from "@/types/entitlements"
+import { entitlementsAtom } from "@/utils/atoms/entitlements"
 import { useEntitlements } from "../use-entitlements"
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ function renderWithProviders<T>(hook: () => T) {
     </JotaiProvider>
   )
 
-  return renderHook(hook, { wrapper })
+  return { ...renderHook(hook, { wrapper }), store }
 }
 
 // ---------------------------------------------------------------------------
@@ -149,5 +150,53 @@ describe("useEntitlements", () => {
     // Schema parse error → cache fallback
     expect(result.current.data).toEqual(PRO_ENTITLEMENTS)
     expect(result.current.isFromCache).toBe(true)
+  })
+
+  it("returns FREE (not stale cached Pro) when cached pro tier has an expired expiresAt", async () => {
+    const stalePro: Entitlements = {
+      tier: "pro",
+      features: ["pdf_translate"],
+      quota: {},
+      expiresAt: "2020-01-01T00:00:00.000Z", // in the past → isPro returns false
+    }
+    fetchMock.mockRejectedValue(new Error("network error"))
+    readCacheMock.mockResolvedValue({ userId: "user-1", value: stalePro, updatedAt: new Date() })
+
+    const { result } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toEqual(FREE_ENTITLEMENTS)
+    expect(result.current.isFromCache).toBe(false)
+  })
+
+  it("returns FREE when the cache row is older than 7 days", async () => {
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    fetchMock.mockRejectedValue(new Error("network error"))
+    readCacheMock.mockResolvedValue({
+      userId: "user-1",
+      value: PRO_ENTITLEMENTS,
+      updatedAt: eightDaysAgo,
+    })
+
+    const { result } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toEqual(FREE_ENTITLEMENTS)
+    expect(result.current.isFromCache).toBe(false)
+  })
+
+  it("does NOT update entitlementsAtom when data is served from cache", async () => {
+    fetchMock.mockRejectedValue(new Error("network error"))
+    readCacheMock.mockResolvedValue({ userId: "user-1", value: PRO_ENTITLEMENTS, updatedAt: new Date() })
+
+    const { result, store } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // Hook returns cached Pro but atom must remain at the initial FREE_ENTITLEMENTS
+    expect(result.current.isFromCache).toBe(true)
+    expect(store.get(entitlementsAtom)).toEqual(FREE_ENTITLEMENTS)
   })
 })
