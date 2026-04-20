@@ -3,8 +3,9 @@ export interface LibreOutput { text: string }
 
 export async function translateLibre(input: LibreInput): Promise<LibreOutput> {
   const body: Record<string, string> = { q: input.text, source: input.from, target: input.to, format: "text" }
-  if (input.apiKey)
-    body.api_key = input.apiKey
+  const apiKey = input.apiKey?.trim()
+  if (apiKey)
+    body.api_key = apiKey
   const res = await fetch(input.endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -12,7 +13,13 @@ export async function translateLibre(input: LibreInput): Promise<LibreOutput> {
   })
   if (!res.ok)
     throw new Error(`LibreTranslate HTTP ${res.status}`)
-  const data = await res.json() as { translatedText?: string, error?: string }
+  let data: { translatedText?: string, error?: string }
+  try {
+    data = await res.json()
+  }
+  catch {
+    throw new Error("LibreTranslate: invalid JSON response")
+  }
   if (data.error)
     throw new Error(`LibreTranslate: ${data.error}`)
   return { text: data.translatedText ?? "" }

@@ -104,4 +104,30 @@ describe("translateLibre", () => {
       translateLibre({ text: "Hello", from: "en", to: "xx", endpoint: "https://libretranslate.com/translate" }),
     ).rejects.toThrow("LibreTranslate: Language pair not supported")
   })
+
+  it("throws 'invalid JSON response' when HTTP 200 body is not valid JSON", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockRejectedValue(new SyntaxError("Unexpected token < in JSON")),
+    })
+
+    await expect(
+      translateLibre({ text: "Hello", from: "en", to: "es", endpoint: "https://libretranslate.com/translate" }),
+    ).rejects.toThrow("LibreTranslate: invalid JSON response")
+  })
+
+  it("does NOT include api_key in body when apiKey is whitespace-only", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ translatedText: "Hola" }),
+    })
+
+    await translateLibre({ text: "Hello", from: "en", to: "es", endpoint: "https://libretranslate.com/translate", apiKey: "   " })
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const parsed = JSON.parse(requestInit.body)
+    expect(parsed).not.toHaveProperty("api_key")
+  })
 })
