@@ -43,6 +43,15 @@ vi.mock("@/utils/db/dexie/entitlements", () => ({
   readCachedEntitlements: vi.fn().mockResolvedValue(null),
 }))
 
+vi.mock("@/utils/logger", () => ({
+  logger: {
+    warn: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  },
+}))
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -196,6 +205,25 @@ describe("accountPage", () => {
       expect(store.get(entitlementsAtom)).toEqual(FREE_ENTITLEMENTS)
       expect(deleteCachedEntitlements).toHaveBeenCalledWith("user-1")
     })
+  })
+
+  it("tolerates Dexie cache delete failure during sign-out", async () => {
+    const { authClient } = await import("@/utils/auth/auth-client")
+    const { deleteCachedEntitlements } = await import("@/utils/db/dexie/entitlements")
+    ;(deleteCachedEntitlements as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("IndexedDB unavailable"))
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1", email: "test@example.com" } }, isPending: false })
+    useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
+
+    const store = createStore()
+    renderWithProviders(<AccountPage />, store)
+
+    fireEvent.click(screen.getByText("billing.account.signOut"))
+
+    await waitFor(() => {
+      expect(authClient.signOut).toHaveBeenCalled()
+      expect(store.get(entitlementsAtom)).toEqual(FREE_ENTITLEMENTS)
+    })
+    // No uncaught rejection — the .catch swallows IndexedDB errors gracefully.
   })
 
   it("renders with the billing.account.section title", () => {

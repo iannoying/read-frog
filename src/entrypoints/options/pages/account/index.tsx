@@ -21,6 +21,7 @@ import { entitlementsAtom } from "@/utils/atoms/entitlements"
 import { authClient } from "@/utils/auth/auth-client"
 import { WEBSITE_URL } from "@/utils/constants/url"
 import { deleteCachedEntitlements } from "@/utils/db/dexie/entitlements"
+import { logger } from "@/utils/logger"
 import { PageLayout } from "../../components/page-layout"
 
 function formatExpiry(expiresAt: string): string {
@@ -72,7 +73,9 @@ export function AccountPage() {
     await authClient.signOut()
     setEntitlements(FREE_ENTITLEMENTS)
     if (currentUserId != null) {
-      await deleteCachedEntitlements(currentUserId)
+      deleteCachedEntitlements(currentUserId).catch((err) => {
+        logger.warn("[billing] cache delete failed on sign-out", err)
+      })
     }
   }
 
