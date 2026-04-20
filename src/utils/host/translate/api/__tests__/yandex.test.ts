@@ -85,4 +85,80 @@ describe("translateYandex", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
+
+  it("throws HTTP error when SID page returns non-ok status (e.g. 429)", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+    })
+
+    await expect(
+      translateYandex({ text: "Hi", from: "en", to: "ru" }),
+    ).rejects.toThrow("Yandex page HTTP 429")
+  })
+
+  it("throws HTTP error when translate endpoint returns non-ok status (e.g. 500)", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(`SID: 'a.b.c'`),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    })
+
+    await expect(
+      translateYandex({ text: "Hi", from: "en", to: "ru" }),
+    ).rejects.toThrow("Yandex translate HTTP 500")
+  })
+
+  it("re-fetches SID after TTL expires via injectable clock", async () => {
+    let fakeNow = 0
+    const now = () => fakeNow
+
+    // First translate: fetches SID + translates
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(`SID: 'a.b.c'`),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ code: 200, text: ["one"] }),
+    })
+
+    await translateYandex({ text: "one", from: "en", to: "ru" }, { now })
+
+    // Advance clock past TTL (30 minutes = 1_800_000 ms)
+    fakeNow = 31 * 60_000
+
+    // Second translate: cache expired, should re-fetch SID
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(`SID: 'd.e.f'`),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ code: 200, text: ["two"] }),
+    })
+
+    await translateYandex({ text: "two", from: "en", to: "ru" }, { now })
+
+    // 4 total calls: SID page + translate + SID page again + translate
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it("throws on malformed translate response when text field is missing", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(`SID: 'a.b.c'`),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ code: 200 }),
+    })
+
+    await expect(
+      translateYandex({ text: "Hi", from: "en", to: "ru" }),
+    ).rejects.toThrow("Yandex translate: unexpected response format")
+  })
 })
