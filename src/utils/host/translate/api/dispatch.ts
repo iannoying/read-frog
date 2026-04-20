@@ -53,10 +53,10 @@ export async function dispatchFreeTranslate(
   }
 
   if (lastError) {
-    throw new Error(`All free providers unhealthy: ${lastError.message}`)
+    throw new Error(`All free providers failed: ${lastError.message}`)
   }
 
-  throw new Error("All free providers unhealthy")
+  throw new Error("No available free translation provider")
 }
 
 // Default singleton health tracker — shared across calls; override in tests
@@ -80,4 +80,11 @@ export const defaultImpls: Partial<Record<ProviderKind, FreeTranslateImpl>> = {
   // libre and deeplx need runtime config — caller supplies them
 }
 
-export const DEFAULT_ORDER: ProviderKind[] = ["google", "microsoft", "bing", "yandex", "libre"]
+/**
+ * Default provider try-order for free translation.
+ *
+ * LibreTranslate and DeepLX require runtime configuration (endpoint / api key)
+ * and must be explicitly added by the caller when configured, e.g.
+ * `[...DEFAULT_ORDER, 'libre']` after injecting `libre` into impls.
+ */
+export const DEFAULT_ORDER: ProviderKind[] = ["google", "microsoft", "bing", "yandex"]

@@ -80,16 +80,31 @@ describe("dispatchFreeTranslate", () => {
         },
         health,
       }),
-    ).rejects.toThrow("All free providers unhealthy: microsoft error")
+    ).rejects.toThrow("All free providers failed: microsoft error")
   })
 
-  it("throws immediately when order is empty", async () => {
+  it("throws 'no available' when order is empty", async () => {
     await expect(
       dispatchFreeTranslate(INPUT, {
         order: [],
         impls: { google: makeImpl("谷歌") },
       }),
-    ).rejects.toThrow("All free providers unhealthy")
+    ).rejects.toThrow("No available free translation provider")
+  })
+
+  it("throws 'no available' when every provider is skipped as unhealthy", async () => {
+    const health = makeHealth({ isHealthy: vi.fn().mockReturnValue(false) })
+    const google = makeImpl("谷歌")
+    const microsoft = makeImpl("微软")
+    await expect(
+      dispatchFreeTranslate(INPUT, {
+        order: ["google", "microsoft"],
+        impls: { google, microsoft },
+        health,
+      }),
+    ).rejects.toThrow("No available free translation provider")
+    expect(google).not.toHaveBeenCalled()
+    expect(microsoft).not.toHaveBeenCalled()
   })
 
   it("skips providers missing from impls without error", async () => {
