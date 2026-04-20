@@ -38,8 +38,6 @@ coverage/
 
 tsconfig.local.json
 
-docs/
-
 /repos
 
 scripts/output/
