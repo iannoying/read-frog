@@ -931,6 +931,7 @@ billing:
     cta: Pro'ya Yükselt
     title: Bu özelliği Pro ile açın
     description: Pro; PDF çevirisi, sınırsız alan çevirisi, bulut eşzamanlı kelime defteri ve daha fazlasını sunar.
+    close: Kapat
   quota:
     outOf: /
     remaining: kaldı

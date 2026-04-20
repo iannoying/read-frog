@@ -931,6 +931,7 @@ billing:
     cta: Pro にアップグレード
     title: Pro でこの機能をアンロック
     description: Pro では PDF 翻訳、無制限の入力欄翻訳、クラウド同期の単語帳などが使えます。
+    close: 閉じる
   quota:
     outOf: /
     remaining: 残り

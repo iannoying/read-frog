@@ -931,6 +931,7 @@ billing:
     cta: Pro로 업그레이드
     title: Pro로 이 기능 잠금 해제
     description: Pro를 사용하면 PDF 번역, 무제한 입력창 번역, 클라우드 동기화 단어장 등을 이용할 수 있습니다.
+    close: 닫기
   quota:
     outOf: /
     remaining: 남음

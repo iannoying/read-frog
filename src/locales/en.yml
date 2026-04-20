@@ -1046,6 +1046,7 @@ billing:
     cta: Upgrade to Pro
     title: Unlock this feature with Pro
     description: Pro unlocks PDF translation, unlimited input-field translation, cloud-synced vocabulary, and more.
+    close: Close
   quota:
     outOf: of
     remaining: remaining

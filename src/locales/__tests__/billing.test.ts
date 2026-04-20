@@ -22,6 +22,7 @@ const REQUIRED_KEYS = [
   "    cta:",
   "    title:",
   "    description:",
+  "    close:",
   "  quota:",
   "    outOf:",
   "    remaining:",
