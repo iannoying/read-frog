@@ -1,16 +1,14 @@
 import type { PromptResolver } from "./api/ai"
+import type { FreeTranslateImpl } from "./api/dispatch"
 import type { Config } from "@/types/config/config"
 import type { ProviderConfig } from "@/types/config/provider"
 import { ISO6393_TO_6391, LANG_CODE_TO_EN_NAME } from "@read-frog/definitions"
 import { isLLMProviderConfig, isNonAPIProvider, isPureAPIProvider } from "@/types/config/provider"
 import { aiTranslate } from "./api/ai"
-import { translateBing } from "./api/bing"
 import { deeplTranslate } from "./api/deepl"
 import { deeplxTranslate } from "./api/deeplx"
-import { googleTranslate } from "./api/google"
+import { DEFAULT_ORDER, defaultHealth, defaultImpls, dispatchFreeTranslate } from "./api/dispatch"
 import { translateLibre } from "./api/libre"
-import { microsoftTranslate } from "./api/microsoft"
-import { translateYandex } from "./api/yandex"
 import { prepareTranslationText } from "./text-preparation"
 
 export async function executeTranslate<TContext>(
@@ -38,20 +36,49 @@ export async function executeTranslate<TContext>(
     if (!targetLang) {
       throw new Error(`Invalid target language code: ${langConfig.targetCode}`)
     }
-    if (provider === "google-translate") {
-      translatedText = await googleTranslate(preparedText, sourceLang, targetLang)
+
+    // Map from options provider-id (e.g. "bing-translate") to ProviderKind (e.g. "bing")
+    // used by dispatchFreeTranslate.
+    const PROVIDER_ID_TO_KIND: Record<string, typeof DEFAULT_ORDER[number]> = {
+      "google-translate": "google",
+      "microsoft-translate": "microsoft",
+      "bing-translate": "bing",
+      "yandex-translate": "yandex",
     }
-    else if (provider === "microsoft-translate") {
-      translatedText = await microsoftTranslate(preparedText, sourceLang, targetLang)
-    }
-    else if (provider === "bing-translate") {
-      const result = await translateBing({ text: preparedText, from: sourceLang, to: targetLang })
-      translatedText = result.text
-    }
-    else if (provider === "yandex-translate") {
-      const result = await translateYandex({ text: preparedText, from: sourceLang, to: targetLang })
-      translatedText = result.text
-    }
+
+    // Route through dispatchFreeTranslate so the circuit-breaker and fallback
+    // chain from M1 Task 5 are always in the live path.
+    //
+    // Option A: start with the user's chosen provider, then fall through to
+    // others on failure — delivers the M1 resilience promise while still
+    // honouring the user's preference as the first attempt.
+    const preferredKind = PROVIDER_ID_TO_KIND[provider]
+    const order = preferredKind
+      ? [preferredKind, ...DEFAULT_ORDER.filter(k => k !== preferredKind)]
+      : DEFAULT_ORDER
+
+    // Inject a LibreTranslate impl if the user has configured an endpoint,
+    // so it can participate in the fallback chain.
+    const libreConfig = providerConfig as Record<string, unknown>
+    const libreEndpoint = typeof libreConfig.endpoint === "string" ? libreConfig.endpoint : undefined
+    const libreImpl: FreeTranslateImpl | undefined = libreEndpoint
+      ? async input => translateLibre({
+        text: input.text,
+        from: input.from,
+        to: input.to,
+        endpoint: libreEndpoint,
+        apiKey: typeof libreConfig.apiKey === "string" ? libreConfig.apiKey : undefined,
+      })
+      : undefined
+
+    const finalOrder = libreImpl ? [...order, "libre" as const] : order
+    const impls = libreImpl ? { ...defaultImpls, libre: libreImpl } : defaultImpls
+
+    const result = await dispatchFreeTranslate(
+      { text: preparedText, from: sourceLang, to: targetLang },
+      { order: finalOrder, impls, health: defaultHealth },
+    )
+    translatedText = result.text
   }
   else if (isPureAPIProvider(provider)) {
     const sourceLang = langConfig.sourceCode === "auto" ? "auto" : (ISO6393_TO_6391[langConfig.sourceCode] ?? "auto")

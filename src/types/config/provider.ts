@@ -251,7 +251,7 @@ const apiProviderConfigSchemaList = [
   }),
   baseAPIProviderConfigSchema.extend({
     provider: z.literal("libre-translate"),
-    endpoint: z.string(),
+    endpoint: z.string().url().or(z.literal("")),
     apiKey: z.string().optional(),
   }),
 ] as const

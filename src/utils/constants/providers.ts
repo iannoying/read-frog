@@ -616,6 +616,9 @@ export const PROVIDER_CONNECTION_OPTIONS_FIELDS: Partial<
 export const DEFAULT_PROVIDER_CONFIG_LIST: ProvidersConfig = [
   DEFAULT_PROVIDER_CONFIG["microsoft-translate"],
   DEFAULT_PROVIDER_CONFIG["google-translate"],
+  DEFAULT_PROVIDER_CONFIG["bing-translate"],
+  DEFAULT_PROVIDER_CONFIG["yandex-translate"],
+  DEFAULT_PROVIDER_CONFIG["libre-translate"],
   DEFAULT_PROVIDER_CONFIG.openai,
   DEFAULT_PROVIDER_CONFIG.tensdaq,
   DEFAULT_PROVIDER_CONFIG.ai302,
