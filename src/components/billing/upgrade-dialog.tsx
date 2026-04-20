@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react"
+import type { ReactElement } from "react"
 import { i18n } from "#i18n"
 import { Button } from "@/components/ui/base-ui/button"
 import {
@@ -15,7 +15,7 @@ import { WEBSITE_URL } from "@/utils/constants/url"
 
 interface UpgradeDialogProps {
   /** Optional trigger slot — if omitted, dialog is controlled via open/onOpenChange */
-  trigger?: ReactNode
+  trigger?: ReactElement
   open?: boolean
   onOpenChange?: (open: boolean) => void
   /** Analytics tag to distinguish "which feature triggered the paywall" */
@@ -25,13 +25,18 @@ interface UpgradeDialogProps {
 export function UpgradeDialog({ trigger, open, onOpenChange, source }: UpgradeDialogProps) {
   function handleCta() {
     const effectiveSource = source ?? "paywall"
-    window.open(`${WEBSITE_URL}/pricing?source=${effectiveSource}`, "_blank", "noopener,noreferrer")
+    const url = new URL(`${WEBSITE_URL}/pricing`)
+    url.searchParams.set("source", effectiveSource)
+    window.open(url.toString(), "_blank", "noopener,noreferrer")
   }
 
   return (
+    // TODO: Pass shadow-root container once a ShadowWrapperContext is available
+    // (follow-up issue: content-script dialogs escape the shadow root and lose
+    // Tailwind isolation). See react-shadow-host/ for the planned pattern.
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger != null && (
-        <DialogTrigger render={trigger as ReactElement}>
+        <DialogTrigger render={trigger}>
           {null}
         </DialogTrigger>
       )}
@@ -42,7 +47,7 @@ export function UpgradeDialog({ trigger, open, onOpenChange, source }: UpgradeDi
         </DialogHeader>
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>
-            Close
+            {i18n.t("billing.upgrade.close")}
           </DialogClose>
           <Button onClick={handleCta}>
             {i18n.t("billing.upgrade.cta")}

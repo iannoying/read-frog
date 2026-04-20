@@ -931,6 +931,7 @@ billing:
     cta: Nâng cấp lên Pro
     title: Mở khóa tính năng này với Pro
     description: Pro cho phép dịch PDF, dịch ô nhập không giới hạn, sổ từ vựng đồng bộ đám mây và nhiều hơn nữa.
+    close: Đóng
   quota:
     outOf: /
     remaining: còn lại

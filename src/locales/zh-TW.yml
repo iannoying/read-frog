@@ -931,6 +931,7 @@ billing:
     cta: 升級至專業版
     title: 使用專業版解鎖此功能
     description: 專業版包含 PDF 翻譯、無限次輸入框翻譯、雲端同步生字本等更多進階功能。
+    close: 關閉
   quota:
     outOf: /
     remaining: 剩餘

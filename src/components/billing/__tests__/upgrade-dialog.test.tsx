@@ -79,4 +79,19 @@ describe("upgradeDialog", () => {
 
     expect(screen.getByText("billing.upgrade.title")).toBeInTheDocument()
   })
+
+  it("uRL-encodes special characters in source param", () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+
+    render(<UpgradeDialog open={true} onOpenChange={vi.fn()} source="foo &plan=yearly#x" />)
+
+    const cta = screen.getByRole("button", { name: "billing.upgrade.cta" })
+    fireEvent.click(cta)
+
+    expect(openSpy).toHaveBeenCalledWith(
+      `${WEBSITE_URL}/pricing?source=foo+%26plan%3Dyearly%23x`,
+      "_blank",
+      "noopener,noreferrer",
+    )
+  })
 })

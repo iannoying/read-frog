@@ -118,18 +118,17 @@ describe("proGate", () => {
     expect(screen.queryByText("fallback")).not.toBeInTheDocument()
   })
 
-  it("optimistic: true renders children while loading", () => {
+  it("renders fallback while loading even when entitlements would be granted (fail-closed)", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } } })
-    useEntitlementsMock.mockReturnValue({ data: PRO_ENTITLEMENTS, isLoading: true, isFromCache: false })
+    useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: true, isFromCache: false })
 
     renderWithProviders(
-      <ProGate feature="pdf_translate" fallback={<div>fallback</div>} optimistic>
+      <ProGate feature="pdf_translate" fallback={<div>fallback</div>}>
         <div>children</div>
       </ProGate>,
     )
 
-    // optimistic=true skips the fail-closed loading branch; checks hasFeature instead
-    expect(screen.getByText("children")).toBeInTheDocument()
-    expect(screen.queryByText("fallback")).not.toBeInTheDocument()
+    expect(screen.getByText("fallback")).toBeInTheDocument()
+    expect(screen.queryByText("children")).not.toBeInTheDocument()
   })
 })

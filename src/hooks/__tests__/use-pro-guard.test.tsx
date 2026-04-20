@@ -61,7 +61,7 @@ describe("useProGuard", () => {
   })
 
   it("guard returns true when feature is granted, dialog stays closed", () => {
-    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } } })
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } }, isPending: false })
     useEntitlementsMock.mockReturnValue({ data: PRO_ENTITLEMENTS, isLoading: false, isFromCache: false })
 
     const { result } = renderWithProviders(() => useProGuard())
@@ -73,10 +73,11 @@ describe("useProGuard", () => {
 
     expect(granted).toBe(true)
     expect(result.current.dialogProps.open).toBe(false)
+    expect(result.current.isLoading).toBe(false)
   })
 
   it("guard returns false when feature is denied and sets dialogProps.open to true", () => {
-    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } } })
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } }, isPending: false })
     useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
 
     const { result } = renderWithProviders(() => useProGuard())
@@ -91,7 +92,7 @@ describe("useProGuard", () => {
   })
 
   it("dialogProps.source reflects the last failed guard's source", () => {
-    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } } })
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } }, isPending: false })
     useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
 
     const { result } = renderWithProviders(() => useProGuard())
@@ -104,7 +105,7 @@ describe("useProGuard", () => {
   })
 
   it("multiple guards in same tick: last one wins for source", () => {
-    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } } })
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } }, isPending: false })
     useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
 
     const { result } = renderWithProviders(() => useProGuard())
@@ -116,5 +117,21 @@ describe("useProGuard", () => {
 
     expect(result.current.dialogProps.source).toBe("second")
     expect(result.current.dialogProps.open).toBe(true)
+  })
+
+  it("during loading guard() returns false and does NOT open the upgrade dialog", () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user-1" } }, isPending: false })
+    useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: true, isFromCache: false })
+
+    const { result } = renderWithProviders(() => useProGuard())
+
+    let granted: boolean = true
+    act(() => {
+      granted = result.current.guard("pdf_translate")
+    })
+
+    expect(granted).toBe(false)
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.dialogProps.open).toBe(false)
   })
 })
