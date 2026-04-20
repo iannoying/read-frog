@@ -50,6 +50,33 @@ describe("createHealthTracker", () => {
     expect(tracker.isHealthy("bing")).toBe(true)
   })
 
+  it("single post-cooldown failure does not re-trip the breaker", () => {
+    let t = 0
+    const tracker = createHealthTracker({ now: () => t, windowMs: 60_000, threshold: 3, cooldownMs: 30_000 })
+
+    // Trip the breaker
+    tracker.recordFailure("libre")
+    tracker.recordFailure("libre")
+    tracker.recordFailure("libre")
+    expect(tracker.isHealthy("libre")).toBe(false)
+
+    // Advance past cooldown — provider recovers and failures map is cleared
+    t = 30_000
+    expect(tracker.isHealthy("libre")).toBe(true)
+
+    // One new failure after recovery should not re-trip (needs threshold=3 fresh failures)
+    tracker.recordFailure("libre")
+    expect(tracker.isHealthy("libre")).toBe(true)
+
+    // A second failure is still below threshold
+    tracker.recordFailure("libre")
+    expect(tracker.isHealthy("libre")).toBe(true)
+
+    // Third fresh failure re-trips
+    tracker.recordFailure("libre")
+    expect(tracker.isHealthy("libre")).toBe(false)
+  })
+
   it("old failures outside the sliding window do not count toward the threshold", () => {
     let t = 0
     const tracker = createHealthTracker({ now: () => t, windowMs: 60_000, threshold: 3, cooldownMs: 30_000 })

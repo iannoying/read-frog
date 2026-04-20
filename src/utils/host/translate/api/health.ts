@@ -34,6 +34,7 @@ export function createHealthTracker(opts: HealthOptions = {}) {
         return true
       if (now() >= until) {
         blockedUntil.delete(k)
+        failures.delete(k)
         return true
       }
       return false
