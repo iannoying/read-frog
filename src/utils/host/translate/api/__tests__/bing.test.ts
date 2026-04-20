@@ -103,4 +103,71 @@ describe("translateBing", () => {
       translateBing({ text: "Hello", from: "en", to: "zh-Hans" }),
     ).rejects.toThrow("Bing translate HTTP 429")
   })
+
+  it("throws with HTTP status when token page returns 429", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+    })
+
+    await expect(
+      translateBing({ text: "Hello", from: "en", to: "zh-Hans" }),
+    ).rejects.toThrow("Bing translator page HTTP 429")
+  })
+
+  it("re-fetches token after TTL expires using injectable clock", async () => {
+    let fakeNow = 1_000_000
+    const now = () => fakeNow
+
+    fetchMock
+      // First token fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(TOKEN_HTML),
+      })
+      // First translate
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue(TRANSLATE_RESPONSE),
+      })
+      // Second token fetch (after TTL)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(TOKEN_HTML),
+      })
+      // Second translate
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue([{ translations: [{ text: "再见" }] }]),
+      })
+
+    await translateBing({ text: "Hello", from: "en", to: "zh-Hans" }, { now })
+
+    // Advance clock past 30-minute TTL
+    fakeNow += 31 * 60_000
+
+    const result = await translateBing({ text: "Goodbye", from: "en", to: "zh-Hans" }, { now })
+
+    expect(result).toEqual({ text: "再见" })
+    // Token page fetched twice (once per call after TTL), translate called twice = 4 total
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock.mock.calls[0][0]).toBe("https://www.bing.com/translator")
+    expect(fetchMock.mock.calls[2][0]).toBe("https://www.bing.com/translator")
+  })
+
+  it("throws on malformed translate response missing translations array", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(TOKEN_HTML),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue([{ detectedLanguage: { language: "en" } }]),
+      })
+
+    await expect(
+      translateBing({ text: "Hello", from: "en", to: "zh-Hans" }),
+    ).rejects.toThrow("Bing translate: unexpected response format")
+  })
 })
