@@ -199,4 +199,48 @@ describe("useEntitlements", () => {
     expect(result.current.isFromCache).toBe(true)
     expect(store.get(entitlementsAtom)).toEqual(FREE_ENTITLEMENTS)
   })
+
+  it("returns FREE immediately on 401 without consulting the cache", async () => {
+    // Seed cache with Pro data to prove it is NOT consulted on identity errors
+    readCacheMock.mockResolvedValue({ userId: "user-1", value: PRO_ENTITLEMENTS, updatedAt: new Date() })
+    fetchMock.mockRejectedValue({ code: "UNAUTHORIZED" })
+
+    const { result } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toEqual(FREE_ENTITLEMENTS)
+    expect(result.current.isFromCache).toBe(false)
+    expect(readCacheMock).not.toHaveBeenCalled()
+  })
+
+  it("returns FREE when cached value has a corrupted (invalid) shape", async () => {
+    fetchMock.mockRejectedValue(new Error("network error"))
+    // Cache row exists but the value fails schema validation
+    readCacheMock.mockResolvedValue({
+      userId: "user-1",
+      value: { tier: "zzz" } as unknown as Entitlements,
+      updatedAt: new Date(),
+    })
+
+    const { result } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toEqual(FREE_ENTITLEMENTS)
+    expect(result.current.isFromCache).toBe(false)
+  })
+
+  it("returns fresh backend Pro data even when Dexie write fails", async () => {
+    fetchMock.mockResolvedValue(PRO_ENTITLEMENTS)
+    writeCacheMock.mockRejectedValue(new Error("IndexedDB quota exceeded"))
+    readCacheMock.mockResolvedValue(null)
+
+    const { result } = renderWithProviders(() => useEntitlements("user-1"))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toEqual(PRO_ENTITLEMENTS)
+    expect(result.current.isFromCache).toBe(false)
+  })
 })
