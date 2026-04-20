@@ -16,10 +16,11 @@ import {
 } from "@/components/ui/base-ui/progress"
 import { Skeleton } from "@/components/ui/base-ui/skeleton"
 import { useEntitlements } from "@/hooks/use-entitlements"
-import { isPro } from "@/types/entitlements"
+import { FREE_ENTITLEMENTS, isPro } from "@/types/entitlements"
 import { entitlementsAtom } from "@/utils/atoms/entitlements"
 import { authClient } from "@/utils/auth/auth-client"
 import { WEBSITE_URL } from "@/utils/constants/url"
+import { deleteCachedEntitlements } from "@/utils/db/dexie/entitlements"
 import { PageLayout } from "../../components/page-layout"
 
 function formatExpiry(expiresAt: string): string {
@@ -30,11 +31,25 @@ function formatExpiry(expiresAt: string): string {
   }).format(new Date(expiresAt))
 }
 
+function AccountPageSkeleton() {
+  return (
+    <PageLayout title={i18n.t("billing.account.section")}>
+      <div className="mx-auto mt-8 max-w-md space-y-3">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </PageLayout>
+  )
+}
+
 export function AccountPage() {
   const session = authClient.useSession()
+  const sessionPending = session?.isPending ?? false
   const userId = session?.data?.user?.id ?? null
   const userEmail = session?.data?.user?.email ?? ""
-  const userImage = (session?.data?.user as { image?: string } | undefined)?.image ?? null
+  const user = session?.data?.user
+  const userImage = (user != null && "image" in user && typeof user.image === "string") ? user.image : null
 
   const { data, isLoading } = useEntitlements(userId)
   const setEntitlements = useSetAtom(entitlementsAtom)
@@ -53,8 +68,17 @@ export function AccountPage() {
   }
 
   async function handleSignOut() {
+    const currentUserId = userId // capture before session clears
     await authClient.signOut()
-    setEntitlements({ tier: "free", features: [], quota: {}, expiresAt: null })
+    setEntitlements(FREE_ENTITLEMENTS)
+    if (currentUserId != null) {
+      await deleteCachedEntitlements(currentUserId)
+    }
+  }
+
+  // ── Session pending ───────────────────────────────────────────────────────
+  if (sessionPending) {
+    return <AccountPageSkeleton />
   }
 
   // ── Anonymous ─────────────────────────────────────────────────────────────
@@ -73,7 +97,7 @@ export function AccountPage() {
             </CardHeader>
             <CardFooter className="justify-center">
               <Button
-                onClick={() => window.open(`${WEBSITE_URL}/login`, "_blank", "noopener,noreferrer")}
+                onClick={() => window.open(`${WEBSITE_URL}/log-in`, "_blank", "noopener,noreferrer")}
               >
                 {i18n.t("billing.account.signIn")}
               </Button>
@@ -86,15 +110,7 @@ export function AccountPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
-    return (
-      <PageLayout title={i18n.t("billing.account.section")}>
-        <div className="mx-auto mt-8 max-w-md space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      </PageLayout>
-    )
+    return <AccountPageSkeleton />
   }
 
   // ── Signed in (free or pro/enterprise) ────────────────────────────────────

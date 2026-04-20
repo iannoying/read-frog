@@ -2,14 +2,20 @@
 import type { ReactNode } from "react"
 import type { Entitlements } from "@/types/entitlements"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createStore, Provider as JotaiProvider } from "jotai"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { FREE_ENTITLEMENTS } from "@/types/entitlements"
+import { entitlementsAtom } from "@/utils/atoms/entitlements"
 import { AccountPage } from "../index"
 
-vi.mock("../../../components/page-layout", () => ({
-  PageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock("@/entrypoints/options/components/page-layout", () => ({
+  PageLayout: ({ children, title }: { children: ReactNode, title: React.ReactNode }) => (
+    <div>
+      <h1 data-testid="page-title">{title}</h1>
+      {children}
+    </div>
+  ),
 }))
 
 // ---------------------------------------------------------------------------
@@ -29,6 +35,12 @@ const useEntitlementsMock = vi.fn()
 
 vi.mock("@/hooks/use-entitlements", () => ({
   useEntitlements: (userId: string | null) => useEntitlementsMock(userId),
+}))
+
+vi.mock("@/utils/db/dexie/entitlements", () => ({
+  deleteCachedEntitlements: vi.fn().mockResolvedValue(undefined),
+  writeCachedEntitlements: vi.fn().mockResolvedValue(undefined),
+  readCachedEntitlements: vi.fn().mockResolvedValue(null),
 }))
 
 // ---------------------------------------------------------------------------
@@ -52,17 +64,19 @@ const EXPIRED_PRO_ENTITLEMENTS: Entitlements = {
   expiresAt: "2020-01-01T00:00:00.000Z",
 }
 
-function renderWithProviders(ui: ReactNode) {
+function renderWithProviders(ui: ReactNode, store = createStore()) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   })
-  const store = createStore()
 
-  return render(
-    <JotaiProvider store={store}>
-      <QueryClientProvider client={client}>{ui}</QueryClientProvider>
-    </JotaiProvider>,
-  )
+  return {
+    store,
+    ...render(
+      <JotaiProvider store={store}>
+        <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+      </JotaiProvider>,
+    ),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +98,16 @@ describe("accountPage", () => {
 
     expect(screen.getByText("billing.account.signInPrompt")).toBeInTheDocument()
     expect(screen.queryByText("billing.upgrade.cta")).not.toBeInTheDocument()
+  })
+
+  it("renders skeleton while session.isPending (no anonymous flash)", () => {
+    useSessionMock.mockReturnValue({ data: null, isPending: true })
+    useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
+
+    renderWithProviders(<AccountPage />)
+
+    expect(document.querySelector("[data-slot='skeleton']")).toBeInTheDocument()
+    expect(screen.queryByText("billing.account.signInPrompt")).not.toBeInTheDocument()
   })
 
   it("renders skeleton while loading", () => {
@@ -156,15 +180,30 @@ describe("accountPage", () => {
     expect(screen.getByText("billing.upgrade.cta")).toBeInTheDocument()
   })
 
-  it("calls authClient.signOut when sign out button is clicked", async () => {
+  it("calls authClient.signOut, resets entitlementsAtom, and deletes Dexie cache on sign out", async () => {
     const { authClient } = await import("@/utils/auth/auth-client")
+    const { deleteCachedEntitlements } = await import("@/utils/db/dexie/entitlements")
     useSessionMock.mockReturnValue({ data: { user: { id: "user-1", email: "test@example.com" } }, isPending: false })
+    useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
+
+    const store = createStore()
+    renderWithProviders(<AccountPage />, store)
+
+    fireEvent.click(screen.getByText("billing.account.signOut"))
+
+    await waitFor(() => {
+      expect(authClient.signOut).toHaveBeenCalled()
+      expect(store.get(entitlementsAtom)).toEqual(FREE_ENTITLEMENTS)
+      expect(deleteCachedEntitlements).toHaveBeenCalledWith("user-1")
+    })
+  })
+
+  it("renders with the billing.account.section title", () => {
+    useSessionMock.mockReturnValue({ data: null, isPending: false })
     useEntitlementsMock.mockReturnValue({ data: FREE_ENTITLEMENTS, isLoading: false, isFromCache: false })
 
     renderWithProviders(<AccountPage />)
 
-    fireEvent.click(screen.getByText("billing.account.signOut"))
-
-    expect(authClient.signOut).toHaveBeenCalled()
+    expect(screen.getByTestId("page-title")).toHaveTextContent("billing.account.section")
   })
 })
